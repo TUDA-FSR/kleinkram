@@ -277,7 +277,11 @@ export const projectAccessesToProjectDtos = (
 ): ProjectWithAccessRightsDto[] =>
     (projectAccesses ?? []).flatMap((access) => {
         const project = access.project;
-        if (project === undefined) {
+        // TypeORM yields `null` (not undefined) for a relation whose target
+        // row is soft-deleted. Access groups keep their project_access rows
+        // after a project is deleted, so this must skip both, or the whole
+        // access-group listing fails with a 500.
+        if (project === undefined || project === null) {
             return [];
         }
         return [

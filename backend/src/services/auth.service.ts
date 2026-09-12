@@ -56,9 +56,32 @@ export class AuthService implements OnModuleInit {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    async validateAndCreateUserByGitHub(profile: any): Promise<UserEntity> {
+    async validateAndCreateUserByGitHub(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        profile: any,
+        githubOrgLogins: string[] = [],
+    ): Promise<UserEntity> {
+        const user = await this.resolveOrCreateGitHubUser(profile);
+        await this.affiliationGroupService.syncGithubOrgGroups(
+            this.config,
+            user,
+            githubOrgLogins,
+        );
+        return user;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    private async resolveOrCreateGitHubUser(profile: any): Promise<UserEntity> {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const { id, emails, displayName, photos } = profile;
+        const { id, emails, photos, username } = profile;
+
+        // The provider's display name is optional (GitHub's "Name" field can
+        // be blank), in which case passport yields displayName === null while
+        // user.name is NOT NULL - login then failed with a 500. Fall back to
+        // the provider username, then to the email local-part.
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        const displayName: string =
+            profile.displayName ?? username ?? String(emails[0].value).split('@')[0];
 
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
         const email = emails[0].value;
@@ -137,7 +160,15 @@ export class AuthService implements OnModuleInit {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async validateAndCreateUserByGoogle(profile: any): Promise<UserEntity> {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const { id, emails, displayName, photos } = profile;
+        const { id, emails, photos, username } = profile;
+
+        // The provider's display name is optional (GitHub's "Name" field can
+        // be blank), in which case passport yields displayName === null while
+        // user.name is NOT NULL - login then failed with a 500. Fall back to
+        // the provider username, then to the email local-part.
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        const displayName: string =
+            profile.displayName ?? username ?? String(emails[0].value).split('@')[0];
 
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
         const email = emails[0].value;

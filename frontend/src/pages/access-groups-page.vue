@@ -371,9 +371,12 @@ const accessGroupsColumns = [
         required: true,
         label: 'Creation Date',
         align: 'center',
-        field: (row: AccessGroupDto): string =>
-            row.createdAt.toLocaleDateString(),
-        format: (value: string): string => formatDate(new Date(value)),
+        // Keep the Date object as the field value. The previous code turned it
+        // into a locale string first and then re-parsed it with new Date(),
+        // which yields Invalid Date ("NaN") in every non-US locale (e.g.
+        // "12.9.2026"). Sorting also works on the Date now.
+        field: (row: AccessGroupDto): Date => row.createdAt,
+        format: (value: Date): string => formatDate(value),
         sortable: true,
         style: 'width:  10%; max-width: 10%; min-width: 10%;',
     },

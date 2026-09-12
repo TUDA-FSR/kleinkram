@@ -1,5 +1,10 @@
 # Welcome to Kleinkram
 
+::: tip FSR users
+You are reading the documentation of the FSR instance. Start with [The FSR Instance](fsr-instance.md)
+for the address, how to sign in with GitHub, and what members and guests can do.
+:::
+
 Kleinkram is an open-source, self-hosted platform for managing and processing robotics data. It provides a structured way to store, organize, and act on your data, ensuring that your valuable field logs and datasets are never lost and always accessible.
 
 ## What can I use Kleinkram for?
@@ -54,11 +59,16 @@ The primary way to upload data to Kleinkram is using the **Kleinkram CLI**.
     pip install kleinkram
     ```
 
-2.  **Authenticate**:
+2.  **Point the CLI at your instance and authenticate** (the default endpoint is the public RSL
+    instance, not FSR's):
 
     ```bash
-    klein login
+    klein endpoint fsr https://srv-kleinkram.fsrnet.intranet.local/api https://s3-kleinkram.fsrnet.intranet.local
+    klein login --oauth-provider github
     ```
+
+    On Linux/macOS the CLI also needs the FSR CA certificate, see
+    [Certificates on non-Windows machines](fsr-instance.md#certificates-on-non-windows-machines).
 
 3.  **Upload Data**:
     ```bash

@@ -78,6 +78,58 @@ export class AffiliationGroupService {
     }
 
     /**
+     * Sync affiliation groups derived from GitHub organisation membership.
+     * For each configured org the user is placed in the member groups and
+     * removed from the non-member groups (or vice versa), so a change in org
+     * status takes effect on the next login. No-op without github_orgs config.
+     */
+    async syncGithubOrgGroups(
+        config: AccessGroupConfig,
+        user: UserEntity,
+        userOrgLogins: string[],
+    ): Promise<void> {
+        const rules = config.github_orgs ?? [];
+        if (rules.length === 0) return;
+        const orgs = new Set(userOrgLogins.map((o) => o.toLowerCase()));
+
+        for (const rule of rules) {
+            const isMember = orgs.has(rule.org.toLowerCase());
+            const wanted = isMember
+                ? rule.member_access_groups
+                : rule.non_member_access_groups;
+            const unwanted = isMember
+                ? rule.non_member_access_groups
+                : rule.member_access_groups;
+
+            for (const uuid of unwanted) {
+                await this.groupMembershipRepository.delete({
+                    user: { uuid: user.uuid },
+                    accessGroup: { uuid },
+                });
+            }
+            for (const uuid of wanted) {
+                const exists = await this.groupMembershipRepository.exists({
+                    where: {
+                        user: { uuid: user.uuid },
+                        accessGroup: { uuid },
+                    },
+                });
+                if (!exists) {
+                    await this.groupMembershipRepository.save(
+                        this.groupMembershipRepository.create({
+                            user: { uuid: user.uuid },
+                            accessGroup: { uuid },
+                        }),
+                    );
+                }
+            }
+            this.logger.debug(
+                `GitHub org ${rule.org}: user ${user.uuid} is ${isMember ? 'a member' : 'not a member'}`,
+            );
+        }
+    }
+
+    /**
      * Add user to affiliation groups based on their email address.
      *
      * @param config

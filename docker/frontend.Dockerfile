@@ -22,6 +22,11 @@ ENV GIT_COMMIT=$GIT_COMMIT
 ARG VITE_S3_ENDPOINT
 ENV VITE_S3_ENDPOINT=$VITE_S3_ENDPOINT
 
+# Where the in-app "Docs" links point. Falls back to https://kleinkram.io/docs
+# in the frontend when unset, i.e. the public docs rather than this instance's.
+ARG VITE_DOCS_URL
+ENV VITE_DOCS_URL=$VITE_DOCS_URL
+
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./

@@ -32,6 +32,13 @@ The default provided `docker-compose.prod.yml` runs SeaweedFS with a single `ser
 In production deployments, you should typically run these components separately instead of using our default configuration. This provides better fault isolation and horizontal scaling. For more information, please see the [official SeaweedFS Components Documentation](https://github.com/seaweedfs/seaweedfs/wiki/Components).
 :::
 
+::: tip Retention in production
+None of the observability services ship with disk limits that suit a single-partition host:
+Prometheus has no size cap, Tempo's span metrics carry a per-URL label, and Loki writes to `/tmp`
+inside its container unless given a volume. The FSR deployment changes all of these; see
+[FSR Production Deployment → Retention](../deployment/fsr-deployment.md#retention).
+:::
+
 ### Redis (Queue & Cache)
 
 Redis is an in-memory key-value store used primarily for managing the job queue.
@@ -62,6 +69,21 @@ Grafana Loki is a log aggregation system. It collects logs from all containers, 
 ### Tempo
 
 Grafana Tempo is a distributed tracing backend. It stores traces to help visualize the flow of requests through the microservices, aiding in performance debugging.
+
+## Reverse Proxy (production)
+
+The reference compose file publishes services directly. A production deployment should put a
+TLS-terminating reverse proxy in front and bind everything else to loopback. Three things
+constrain the layout:
+
+- frontend and API must share one origin — the auth cookies are `SameSite=Strict`;
+- the API defines routes at `/`, so mounting it under `/api` requires prefix stripping;
+- browsers and the CLI upload **directly to S3** with presigned URLs, so the S3 endpoint needs its
+  own client-reachable hostname and certificate, and the proxy must pass the `Host` header through
+  unchanged (the signature covers it).
+
+The FSR instance uses Caddy for this; the configuration is in `proxy/Caddyfile` and explained in
+[FSR Production Deployment](../deployment/fsr-deployment.md#network-topology).
 
 ## Documentation
 

@@ -4,7 +4,7 @@
             <h2 class="text-h6 q-mb-xs">Explore all Missions of Project</h2>
             <HelpMessage
                 text="You can only see missions on which you have at least view access on project level or mission level."
-                link="https://docs.datasets.leggedrobotics.com/usage/getting-started.html"
+                :link="docsLink"
             />
         </template>
 
@@ -12,7 +12,7 @@
             <h2 class="text-h6 q-mb-xs">Explore all Files of Mission</h2>
             <HelpMessage
                 text="You can only see files of missions you have access to."
-                link="https://docs.datasets.leggedrobotics.com/usage/getting-started.html"
+                :link="docsLink"
             />
         </template>
     </div>
@@ -20,6 +20,7 @@
 
 <script setup lang="ts">
 import HelpMessage from 'components/help-message.vue';
+import ENV from 'src/environment';
 import { QueryHandler } from 'src/services/query-handler';
 defineProps({
     urlHandler: {
@@ -27,4 +28,7 @@ defineProps({
         required: true,
     },
 });
+
+// Instance docs (VITE_DOCS_URL) rather than a hard-coded host.
+const docsLink = `${ENV.DOCS_URL.replace(/\/$/, '')}/usage/getting-started.html`;
 </script>

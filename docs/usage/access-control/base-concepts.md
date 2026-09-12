@@ -46,10 +46,17 @@ done manually within the database.
 
 ## Affiliation Groups
 
-Users may be added to an affiliation group based on their email domain, e.g. uses signing in with
-an `@roboticscorp.com` email address are automatically added to the `RoboticsCorp` affiliation group. An affiliation
-group can be treated as a normal group, it can be assigned to a project or mission giving its
-members access rights to the resource.
+Users are added to affiliation groups automatically at login, based on either
+
+- their **email domain**, e.g. users signing in with an `@roboticscorp.com` address are added to the
+  `RoboticsCorp` affiliation group, or
+- their **GitHub organisation membership**, e.g. members of the `TUDA-FSR` organisation become
+  `FSR Member` and everyone else `FSR Guest` (this is how the FSR instance is configured, see
+  [The FSR Instance](../fsr-instance.md#members-and-guests)).
+
+An affiliation group can be treated as a normal group: it can be assigned to a project or mission
+giving its members access rights to the resource. Membership is re-evaluated on every login, so
+it follows changes in email or organisation membership.
 
 On top of that, affiliation groups can be used to
 
@@ -57,6 +64,9 @@ On top of that, affiliation groups can be used to
   all new projects by default (unless explicitly changed))
 - can restrict or allow global access rights (e.g. all users not part of the `RoboticsCorp` affiliation group are not
   allowed create new projects or creation of new access groups)
+- can be marked as *read-only tiers*: an affiliation group may be configured so that membership
+  does **not** grant project creation, while still being attached to every new project with a
+  default access level (used for `FSR Guest`)
 
 ## Primary Group
 

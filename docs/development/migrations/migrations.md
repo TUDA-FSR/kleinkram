@@ -60,6 +60,18 @@ pnpm run typeorm migration:generate migration/migrations/migration-name -d migra
 
 ## Production & Staging
 
+::: tip FSR instance
+On `srv-kleinkram` the production image contains no TypeORM CLI. Use the wrapper, which runs the
+CLI from the `kleinkram-base` image against the checked-out source on the compose network:
+
+```bash
+./scripts/migrate-prod.sh show   # read-only
+./scripts/migrate-prod.sh run    # apply, BEFORE restarting api-server
+```
+
+See [FSR Production Deployment](../deployment/fsr-deployment.md#upgrading).
+:::
+
 Apply migrations using the standard TypeORM CLI commands pointing to the environment-specific configuration.
 
 ### Configuration

@@ -107,6 +107,29 @@ export default {
     },
 
     /**
+     * @returns whether only ADMIN users may run Kleinkram Actions. Defaults to
+     * false (upstream behaviour: anyone with the template's required rights on
+     * the mission). Actions execute arbitrary containers on the host with the
+     * docker socket, so internal deployments may want to restrict them.
+     */
+    get ACTIONS_ADMIN_ONLY(): boolean {
+        return process.env.ACTIONS_ADMIN_ONLY === 'true';
+    },
+
+    /**
+     * @returns GitHub organisation logins whose members may log in (comma
+     * separated, case-insensitive). Empty = no restriction (upstream
+     * behaviour: any GitHub account can authorise the OAuth App - GitHub
+     * itself offers no way to limit who may log in through an OAuth App).
+     */
+    get GITHUB_ALLOWED_ORGS(): string[] {
+        return (process.env.GITHUB_ALLOWED_ORGS ?? '')
+            .split(',')
+            .map((o) => o.trim().toLowerCase())
+            .filter((o) => o.length > 0);
+    },
+
+    /**
      * @returns glob describing where typeorm entities are found
      * @example dist/entities/*.entities.js
      */

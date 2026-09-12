@@ -1,0 +1,52 @@
+# Reverse proxy for the internal Kleinkram deployment.
+# TLS: one internal-CA cert covering all three names (certs/site/, gitignored).
+# Caddy redirects plain HTTP to HTTPS automatically for these host blocks.
+
+(common) {
+	tls /certs/kleinkram.crt /certs/kleinkram.key
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+	log {
+		output stdout
+		format json
+		level INFO
+	}
+}
+
+# App: SPA at /, API under /api. The backend has no global route prefix and its
+# auth cookies are SameSite=strict, so both must share this one origin.
+# handle_path strips /api before proxying, so /api/auth/github/callback reaches
+# the backend as /auth/github/callback - the route it actually defines.
+srv-kleinkram.fsrnet.intranet.local {
+	import common
+	handle_path /api/* {
+		reverse_proxy api-server:3000
+	}
+	handle {
+		reverse_proxy frontend:80
+	}
+}
+
+# SeaweedFS S3. Browsers upload/download here directly with presigned URLs, so
+# the Host header must pass through untouched (Caddy's default) - the signature
+# covers it. No body size limit: bag/mcap files are multi-GB.
+s3-kleinkram.fsrnet.intranet.local {
+	import common
+	reverse_proxy seaweedfs:9000 {
+		flush_interval -1
+		transport http {
+			read_timeout 0
+			write_timeout 0
+		}
+	}
+}
+
+docs-kleinkram.fsrnet.intranet.local {
+	import common
+	reverse_proxy documentation:80
+}

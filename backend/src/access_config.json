@@ -1,15 +1,26 @@
 {
-    "emails": [
+    "emails": [],
+    "github_orgs": [
         {
-            "email": "kleinkram.dev",
-            "access_groups": ["00000000-0000-0000-0000-000000000000"]
+            "org": "TUDA-FSR",
+            "member_access_groups": ["a3b1c9d0-0000-4000-8000-00000000f5f0"],
+            "non_member_access_groups": ["a3b1c9d0-0000-4000-8000-00000000f5f1"]
         }
     ],
     "access_groups": [
         {
-            "name": "Kleinkram Developers",
-            "uuid": "00000000-0000-0000-0000-000000000000",
-            "rights": 10
+            "name": "FSR Member",
+            "uuid": "a3b1c9d0-0000-4000-8000-00000000f5f0",
+            "rights": 10,
+            "can_create_projects": true,
+            "default_for_all_projects": true
+        },
+        {
+            "name": "FSR Guest",
+            "uuid": "a3b1c9d0-0000-4000-8000-00000000f5f1",
+            "rights": 0,
+            "can_create_projects": false,
+            "default_for_all_projects": true
         }
     ]
 }

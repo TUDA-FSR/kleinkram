@@ -1,6 +1,6 @@
 <template>
     <div class="flex row justify-center cursor-pointer q-my-auto q-pa-none">
-        <img src="/logoRSL.png" style="height: 28px" alt="RSL Logo" />
+        <img src="/fsr-logo.svg" style="height: 28px" alt="FSR Logo" />
         <div
             v-show="$q.screen.gt.sm"
             class="flex column justify-center"

@@ -5,7 +5,7 @@
             <div class="text-h5 text-center">
                 A web-based tool for managing ROS bags
             </div>
-            <q-img src="/rsl.png" class="q-mt-md" />
+            <q-img src="/fsr-logo.svg" class="q-mt-md" style="max-width: 400px; margin: 0 auto" />
         </div>
     </div>
 </template>

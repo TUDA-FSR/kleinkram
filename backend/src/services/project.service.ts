@@ -16,7 +16,7 @@ import {
     NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, ILike, Not, Repository } from 'typeorm';
+import { DataSource, EntityManager, ILike, In, Not, Repository } from 'typeorm';
 import { UserService } from './user.service';
 
 import {
@@ -413,6 +413,21 @@ export class ProjectService {
         const defaultAccessGroups = defaultMemberships
             .map((ag) => ag.accessGroup)
             .filter((ag) => ag !== undefined);
+
+        // Affiliation groups flagged default_for_all_projects in the access
+        // config (e.g. a read-only guest group) are attached to every new
+        // project, not only to those created by their own members. The creator
+        // can still drop them via removedDefaultGroups.
+        const alwaysDefaultUuids = this.config.access_groups
+            .filter((g) => g.default_for_all_projects === true)
+            .map((g) => g.uuid)
+            .filter((uuid) => !defaultAccessGroups.some((g) => g.uuid === uuid));
+        if (alwaysDefaultUuids.length > 0) {
+            const extra = await this.accessGroupRepository.find({
+                where: { uuid: In(alwaysDefaultUuids) },
+            });
+            defaultAccessGroups.push(...extra);
+        }
 
         project.requiredTags ??= [];
         const tagTypes = await Promise.all(

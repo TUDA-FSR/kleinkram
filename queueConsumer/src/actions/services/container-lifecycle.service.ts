@@ -1,3 +1,4 @@
+import * as fs from 'node:fs';
 import { ActionEntity, environment } from '@kleinkram/backend-common';
 import { ActionRunnerEntity } from '@kleinkram/backend-common/entities/action/action-runner.entity';
 import { ActionState, ImageSource } from '@kleinkram/shared';
@@ -31,6 +32,8 @@ const RUNNER_INACTIVE_THRESHOLD_MS = 5 * 60 * 1000;
  */
 @Injectable()
 export class ContainerLifecycleService {
+    private static warnedNoDockerSocket = false;
+
     constructor(
         private readonly dockerDaemon: DockerDaemon,
         @InjectRepository(ActionRunnerEntity)
@@ -132,6 +135,18 @@ export class ContainerLifecycleService {
      * Prevents friendly fire between environments by checking runner heartbeats.
      */
     async performReconciliation(currentRunnerId: string): Promise<void> {
+        // Deployments that disable Actions do not mount the docker socket.
+        // Without this guard the 30s loop logged a stack trace at ERROR level
+        // every run (~2900 lines/day into Loki) for a fully expected state.
+        if (!fs.existsSync('/var/run/docker.sock')) {
+            if (!ContainerLifecycleService.warnedNoDockerSocket) {
+                logger.warn(
+                    'Docker socket not mounted - Kleinkram Actions are disabled; skipping container reconciliation.',
+                );
+                ContainerLifecycleService.warnedNoDockerSocket = true;
+            }
+            return;
+        }
         logger.debug('Starting container reconciliation...');
 
         // Fetch all containers with our prefix

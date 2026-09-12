@@ -16,6 +16,13 @@ conversion, and metadata extraction.
 
 :::
 
+::: warning Restricted instances
+An instance can be configured so that only administrators may start Actions (`ACTIONS_ADMIN_ONLY`).
+The **FSR instance is configured this way**: everyone can view templates and executions, but
+submitting an Action — from the web interface, the CLI, or a trigger — is refused for
+non-admins. See [The FSR Instance](../fsr-instance.md#actions).
+:::
+
 ## Launch Actions via Web Interface
 
 Actions can be configured and launched directly within the Kleinkram web interface. For that you must navigate to the

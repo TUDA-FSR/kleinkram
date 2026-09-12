@@ -6,8 +6,10 @@ import { UserEntity } from '@backend-common/entities/user/user.entity';
 import { WorkerEntity } from '@backend-common/entities/worker/worker.entity';
 import { addActionQueue } from '@backend-common/scheduling-logic';
 import { ActionState, ActionTriggerSource, UserRole } from '@kleinkram/shared';
+import environment from '@backend-common/environment';
 import {
     ConflictException,
+    ForbiddenException,
     Injectable,
     Logger,
     OnModuleDestroy,
@@ -93,6 +95,21 @@ export class ActionDispatcherService implements OnModuleInit, OnModuleDestroy {
         triggerSource: ActionTriggerSource = ActionTriggerSource.MANUAL,
         triggerUuid?: string,
     ): Promise<string> {
+        // Every way of starting an Action (UI, CLI, API key, cron / webhook /
+        // file triggers) ends up here, so this is the one place to enforce an
+        // instance-wide admin-only policy.
+        if (
+            environment.ACTIONS_ADMIN_ONLY &&
+            creator.role !== UserRole.ADMIN
+        ) {
+            this.logger.warn(
+                `[Dispatch] Actions are admin-only on this instance; denied for user ${creator.uuid} (source: ${triggerSource})`,
+            );
+            throw new ForbiddenException(
+                'Kleinkram Actions are restricted to administrators on this instance',
+            );
+        }
+
         const template = await this.actionTemplateRepository.findOneOrFail({
             where: { uuid: templateUuid },
         });

@@ -35,7 +35,7 @@
             >
                 <div style="width: 100%">
                     <img
-                        src="/logoRSL.png"
+                        src="/fsr-logo.svg"
                         style="height: 28px; margin-bottom: 48px"
                     />
 

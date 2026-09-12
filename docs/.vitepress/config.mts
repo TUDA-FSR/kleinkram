@@ -68,6 +68,10 @@ export default withMermaid({
                             link: '/usage/getting-started.md',
                         },
                         {
+                            text: 'The FSR Instance',
+                            link: '/usage/fsr-instance.md',
+                        },
+                        {
                             text: 'FAQ',
                             link: '/usage/faq.md',
                         },
@@ -236,6 +240,10 @@ export default withMermaid({
                         {
                             text: 'Environment Variables',
                             link: '/development/environment-variables.md',
+                        },
+                        {
+                            text: 'FSR Production Deployment',
+                            link: '/development/deployment/fsr-deployment.md',
                         },
                         {
                             text: 'GitHub Actions',

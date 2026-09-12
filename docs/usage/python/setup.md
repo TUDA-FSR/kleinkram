@@ -28,6 +28,23 @@ This will add the command `klein` to your PATH. You are ready to get started!
 klein --help
 ```
 
+## Selecting an Instance
+
+The CLI defaults to the public RSL instance. To talk to a self-hosted instance, register it once as
+a named endpoint (API URL and S3 URL) and it becomes the active one:
+
+```bash
+klein endpoint fsr https://srv-kleinkram.fsrnet.intranet.local/api https://s3-kleinkram.fsrnet.intranet.local
+klein endpoint            # lists endpoints, * marks the active one
+```
+
+::: warning Private certificate authorities
+If the instance uses a certificate from an internal CA (the FSR instance does), the CLI will fail
+with `SSLError: certificate verify failed` until `REQUESTS_CA_BUNDLE` and `AWS_CA_BUNDLE` point at
+a bundle containing that CA — `requests` and the S3 client do not read the system trust store.
+See [The FSR Instance](../fsr-instance.md#certificates-on-non-windows-machines).
+:::
+
 ## Authentication
 
 To use the CLI or the Python SDK, you must first authenticate your local setup. This is done exclusively using the CLI:
@@ -66,7 +83,8 @@ By default, the CLI opens Google as the OAuth provider. If you want to use anoth
 klein login --oauth-provider github
 ```
 
-Supported providers are `google` and `github`.
+Supported providers are `google` and `github`. The FSR instance offers **GitHub only**, so
+`--oauth-provider github` is required there.
 
 ::: info Development Providers
 For local development purposes, a `fake-oauth` provider is also available. See the [Developer Guide](../../development/getting-started.md#fake-oauth-provider) for more details.

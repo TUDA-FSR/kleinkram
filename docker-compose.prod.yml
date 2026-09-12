@@ -21,7 +21,10 @@ services:
             - 127.0.0.1:${SERVER_PORT}:${SERVER_PORT}
 
         env_file:
-            - .env
+            # NOTE: this is the literal file compose reads for container env.
+            # `docker compose --env-file X` does NOT change it (that flag only
+            # affects ${VAR} interpolation), so it must name .env.prod directly.
+            - .env.prod
 
         networks:
             - webnet
@@ -41,8 +44,10 @@ services:
         image: postgres:17
         container_name: kleinkram-postgres-prod
 
+        # Loopback-only: docker publishes ports via its own iptables chain,
+        # which bypasses ufw entirely. The bind address is the real control.
         ports:
-            - '5432:5432'
+            - '127.0.0.1:5432:5432'
 
         networks:
             - privatenet
@@ -94,26 +99,33 @@ services:
                 - GIT_BRANCH=${GIT_BRANCH}
                 - GIT_COMMIT=${GIT_COMMIT}
                 - VITE_S3_ENDPOINT=${S3_ENDPOINT}
+                - VITE_DOCS_URL=${DOCS_URL}
             additional_contexts:
                 kleinkram-base: service:base
 
+        # Reached only via the reverse proxy on 443.
         ports:
-            - '8003:80'
+            - '127.0.0.1:8003:80'
 
         networks:
             - webnet
 
     redis:
-        image: redis:latest
+        image: redis:8.10.1
         container_name: kleinkram-redis-prod
+        # Redis has no password configured; it must never leave loopback.
         ports:
-            - '6379:6379'
+            - '127.0.0.1:6379:6379'
         networks:
             - privatenet
 
     queue-consumer:
         image: rslethz/kleinkram:queue-consumer-latest
         container_name: kleinkram-queue-consumer-prod
+        # Workers/runners are keyed by hostname. Without this, a restart with no
+        # docker socket registers the random container ID as a brand-new (and
+        # then forever-offline) device.
+        hostname: srv-kleinkram
         build:
             context: .
             dockerfile: docker/queue-consumer.Dockerfile
@@ -124,7 +136,7 @@ services:
         ports:
             - '127.0.0.1:8080:8080'
         env_file:
-            - .env
+            - .env.prod
         environment:
             DB_HOST: postgres
             DATA_SOURCE_NAME: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_DATABASE}?sslmode=disable
@@ -136,15 +148,21 @@ services:
             - postgres
             - loki
         volumes:
-            # mount docker socket to access docker from within the container
+            # Kleinkram Actions run as containers via this socket, which is
+            # root-equivalent control of the host. Who may start an Action is
+            # therefore restricted to ADMIN users via ACTIONS_ADMIN_ONLY=true in
+            # .env.prod (enforced in ActionDispatcherService, the single
+            # chokepoint for UI/CLI/API-key/trigger submissions).
             - /var/run/docker.sock:/var/run/docker.sock
-            - ./google-service-account.json:/app/queueConsumer/google-service-account.json:ro
-        # Add docker group to allow access to docker socket
+            # NOTE: upstream also bind-mounts ./google-service-account.json. It
+            # is left out here: the file does not exist, docker would silently
+            # create it as a DIRECTORY, and Drive import is guarded by
+            # existsSync/isFile so it just logs a warning when absent.
         group_add:
             - ${DOCKER_GID:-999}
 
     prometheus:
-        image: prom/prometheus
+        image: prom/prometheus:v3.14.0
         container_name: kleinkram-prometheus-prod
         volumes:
             - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
@@ -155,20 +173,28 @@ services:
             - '--web.enable-remote-write-receiver'
             - '--enable-feature=exemplar-storage'
             - '--enable-feature=native-histograms'
+            # Upstream set neither flag: 15d implicit time retention and NO size
+            # cap at all. The size cap is the one that actually protects the
+            # partition - whichever limit is hit first wins.
+            - '--storage.tsdb.retention.time=15d'
+            - '--storage.tsdb.retention.size=20GB'
         ports:
-            - '9090:9090'
+            - '127.0.0.1:9090:9090'
         networks:
             - privatenet
 
     tempo:
         user: '0:0'
-        image: grafana/tempo:latest
+        image: grafana/tempo:3.0.0
         container_name: kleinkram-tempo-prod
         command: ['-config.file=/etc/tempo/tempo.yml']
         volumes:
             - ./observability/tempo/tempo.yml:/etc/tempo/tempo.yml
             - logging-tempo-data:/tmp/tempo
-        ports:
+        # Bare port entries ('3200') publish to a RANDOM host port on all
+        # interfaces. Nothing on the host needs these - prometheus, grafana and
+        # the app reach tempo by service name on privatenet - so use expose.
+        expose:
             - '3200' # tempo
             - '4317' # otlp grpc
             - '4318' # otlp http
@@ -176,20 +202,26 @@ services:
             - privatenet
 
     loki:
-        image: grafana/loki
+        image: grafana/loki:3.7.7
         container_name: kleinkram-loki-prod
+        # auth_enabled is false in loki-config.yml, i.e. unauthenticated log
+        # read AND ingest. Upstream published this on all interfaces.
         ports:
-            - '3100:3100'
+            - '127.0.0.1:3100:3100'
         command:
             - --config.file=/mnt/config/loki-config.yml
             - -log.level=error
         volumes:
             - ./observability/loki/loki-config.yml:/mnt/config/loki-config.yml:ro
+            # Upstream mounted no data volume, so loki wrote to /tmp inside the
+            # container: logs were lost on recreate and the writes landed in
+            # /var/lib/docker/overlay2 on the root partition.
+            - logging-loki-data:/loki
         networks:
             - privatenet
 
     grafana:
-        image: grafana/grafana
+        image: grafana/grafana:13.2.1
         container_name: kleinkram-grafana-prod
         volumes:
             - logging-grafana-storage:/var/lib/grafana
@@ -198,7 +230,7 @@ services:
         environment:
             - GF_LOG_LEVEL=critical
         ports:
-            - '9050:3000' # localhost:9050 for accessing grafana
+            - '127.0.0.1:9050:3000' # localhost:9050 for accessing grafana
         networks:
             - privatenet
 
@@ -210,7 +242,30 @@ services:
             dockerfile: docker/docs.Dockerfile
             target: production
         ports:
-            - '4000:80'
+            - '127.0.0.1:4000:80'
+        networks:
+            - webnet
+
+    caddy:
+        image: caddy:2-alpine
+        container_name: kleinkram-caddy-prod
+        # The ONLY service published beyond loopback. 443 for the three
+        # hostnames, 80 solely for the automatic HTTPS redirect.
+        ports:
+            - '80:80'
+            - '443:443'
+        volumes:
+            - ./proxy/Caddyfile:/etc/caddy/Caddyfile:ro
+            - ./certs/site:/certs:ro
+            - caddy_data:/data
+            - caddy_config:/config
+        networks:
+            - webnet
+        depends_on:
+            - frontend
+            - api-server
+            - seaweedfs
+            - documentation
 
     artifact-uploader:
         image: rslethz/kleinkram:artifact-uploader-latest
@@ -224,6 +279,9 @@ volumes:
     logging-prometheus-storage:
     logging-grafana-storage:
     logging-tempo-data:
+    logging-loki-data:
+    caddy_data:
+    caddy_config:
 
 networks:
     webnet:

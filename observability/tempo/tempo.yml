@@ -38,6 +38,20 @@ storage:
             max_workers: 100 # Worker pool determines the number of parallel requests to the object store backend.
             queue_depth: 10000 # Maximum depth for the querier queue jobs. A job is required for each block searched.
 
+# Trace block retention. Upstream set nothing, leaving the 14d default
+# implicit. 7d on a single 1TB partition. NOTE: Tempo 3.x moved this from
+# compactor.compaction.* to backend_scheduler.provider.compaction.compaction.*
+# (verified against /status/config?mode=defaults of tempo:3.0.0); the old key
+# makes Tempo refuse to start ("field compactor not found").
+backend_scheduler:
+    provider:
+        compaction:
+            compaction:
+                block_retention: 168h
+backend_worker:
+    compaction:
+        block_retention: 168h
+
 # Configures the metrics generator component of Tempo.
 metrics_generator:
     # Specifies which processors to use.
@@ -45,22 +59,24 @@ metrics_generator:
         # Span metrics create metrics based on span type, duration, name and service.
         span_metrics:
             # Configure extra dimensions to add as metric labels.
+            # NOTE: http.target removed. It carries the full request path
+            # (/file/<uuid>, /mission/<uuid>, ...), so every distinct URL became
+            # its own Prometheus series - unbounded cardinality on a file API.
             dimensions:
                 - http.method
-                - http.target
                 - http.status_code
                 - service.version
         # Service graph metrics create node and edge metrics for determinng service interactions.
         service_graphs:
             # Configure extra dimensions to add as metric labels.
+            # http.target removed here too, same reason as above.
             dimensions:
                 - http.method
-                - http.target
                 - http.status_code
                 - service.version
     # The registry configuration determines how to process metrics.
     registry:
-        collection_interval: 5s # Create new metrics every 5s.
+        collection_interval: 30s # Was 5s; 6x fewer samples written to Prometheus.
 
     # Configures where the store for metrics is located.
     storage:

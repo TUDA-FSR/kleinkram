@@ -22,3 +22,6 @@ docs/development/api/generated/
 docs/development/application-structure/postgres.md
 docs/development/application-structure/postgres.md
 .claude/worktrees/
+.env.prod
+certs/
+housekeeping.log
