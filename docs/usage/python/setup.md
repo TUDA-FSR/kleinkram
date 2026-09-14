@@ -42,7 +42,7 @@ klein endpoint            # lists endpoints, * marks the active one
 If the instance uses a certificate from an internal CA (the FSR instance does), the CLI will fail
 with `SSLError: certificate verify failed` until `REQUESTS_CA_BUNDLE` and `AWS_CA_BUNDLE` point at
 a bundle containing that CA — `requests` and the S3 client do not read the system trust store.
-See [The FSR Instance](../fsr-instance.md#certificates-on-non-windows-machines).
+See [Certificates for the CLI](../fsr-instance.md#certificates-for-the-cli).
 :::
 
 ## Authentication

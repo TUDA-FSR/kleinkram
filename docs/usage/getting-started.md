@@ -67,8 +67,9 @@ The primary way to upload data to Kleinkram is using the **Kleinkram CLI**.
     klein login --oauth-provider github
     ```
 
-    On Linux/macOS the CLI also needs the FSR CA certificate, see
-    [Certificates on non-Windows machines](fsr-instance.md#certificates-on-non-windows-machines).
+    The CLI also needs the FSR root certificate on every platform — see
+    [Install the FSR root certificate first](fsr-instance.md#install-the-fsr-root-certificate-first)
+    and [Certificates for the CLI](fsr-instance.md#certificates-for-the-cli).
 
 3.  **Upload Data**:
     ```bash

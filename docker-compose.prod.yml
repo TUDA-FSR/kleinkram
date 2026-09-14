@@ -243,6 +243,11 @@ services:
             target: production
         ports:
             - '127.0.0.1:4000:80'
+        volumes:
+            # The FSR enterprise CA root, served at /fsrnet-root.crt so users can
+            # self-serve it (see docs/usage/fsr-instance.md). certs/ is gitignored,
+            # so the file is bind-mounted at runtime rather than baked into the image.
+            - ./certs/fsrnet-root.crt:/usr/share/nginx/html/fsrnet-root.crt:ro
         networks:
             - webnet
 
