@@ -51,8 +51,9 @@ services:
         container_name: kleinkram-postgres-prod
         restart: unless-stopped
 
-        # Loopback-only: docker publishes ports via its own iptables chain,
-        # which bypasses ufw entirely. The bind address is the real control.
+        # Loopback-only by design. Docker publishes ports through its own
+        # iptables chain, so the bind address -- not the host firewall -- is
+        # what constrains reachability here. Do not widen it.
         ports:
             - '127.0.0.1:5432:5432'
 
@@ -124,7 +125,7 @@ services:
         image: redis:8.10.1
         container_name: kleinkram-redis-prod
         restart: unless-stopped
-        # Redis has no password configured; it must never leave loopback.
+        # Loopback-only by design. Do not widen this bind address.
         ports:
             - '127.0.0.1:6379:6379'
         networks:
@@ -219,8 +220,8 @@ services:
         image: grafana/loki:3.7.7
         container_name: kleinkram-loki-prod
         restart: unless-stopped
-        # auth_enabled is false in loki-config.yml, i.e. unauthenticated log
-        # read AND ingest. Upstream published this on all interfaces.
+        # Loopback-only by design; upstream publishes this more widely.
+        # Do not widen this bind address.
         ports:
             - '127.0.0.1:3100:3100'
         command:
