@@ -195,6 +195,40 @@ $C logs -f api-server        # or Grafana → Explore → Loki
 $C restart api-server        # after editing .env.prod
 ```
 
+### Host reboots
+
+Every long-running service carries `restart: unless-stopped`, so the Docker daemon brings the
+whole stack back by itself after a reboot. Nothing else is needed: there is no systemd unit and
+no `@reboot` cron entry for Kleinkram.
+
+Two consequences worth knowing:
+
+- `depends_on` is **not** honoured on a daemon restart — Docker starts containers in arbitrary
+  order, so `api-server` may come up before `postgres`. It crashes, and the restart policy
+  retries it with backoff until the database answers. A few early crash loops in the boot logs
+  are expected, not a fault.
+- `unless-stopped` deliberately skips a container that was stopped **by hand** (`docker stop`,
+  and `docker kill` too — Docker records both as a manual stop). Such a container stays down
+  across a reboot until `docker start` / `$C up -d`. This is the intended semantic; use it when
+  taking one service out deliberately.
+
+The policy is baked into a container's `HostConfig` when the container is *created*, so editing
+`restart:` in the compose file only takes effect once the container is recreated by `$C up -d` —
+a `restart` is not enough. To audit what is actually in force:
+
+```bash
+docker inspect --format '{{.Name}} {{.HostConfig.RestartPolicy.Name}}' $(docker ps -aq)
+```
+
+The build-only services (`base`, `artifact-uploader`) have no `container_name` and no restart
+policy on purpose. `$C up -d` starts and immediately exits them; `artifact-uploader` exits
+non-zero. That is cosmetic — they exist only as build contexts for the other images.
+
+One gap to keep in mind: `docker-housekeeping.sh` runs `docker container prune --filter until=24h`.
+If the stack is down for more than 24 hours and the Monday job fires, the stopped containers are
+removed outright, and a restart policy cannot revive a container that no longer exists. Recovery
+is `$C up -d`.
+
 ### Upgrading
 
 ```bash
