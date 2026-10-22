@@ -58,6 +58,8 @@ const FILE_EXTENSION_TO_FILE_TYPE_MAP: ReadonlyMap<string, FileType> = new Map([
     ['.svo2', FileType.SVO2],
     ['.tum', FileType.TUM],
     ['.db3', FileType.DB3],
+    ['.md', FileType.MD],
+    ['.csv', FileType.CSV],
 ]);
 
 @Injectable()
@@ -413,7 +415,10 @@ export class FileLifecycleService implements OnModuleInit {
             }
         }
 
-        return await this.dataSource.transaction(async (manager) => {
+        // Only DB rows are created inside the transaction. Credentials are
+        // issued after commit, so a rollback never leaves valid credentials
+        // behind and the STS calls don't hold a DB connection.
+        const entries = await this.dataSource.transaction(async (manager) => {
             // Deduplicate filenames to avoid self-collisions
             const uniqueFilenames = [...new Set(filenames)];
             const credentials: {
@@ -545,10 +550,7 @@ export class FileLifecycleService implements OnModuleInit {
                             bucket: env.S3_DATA_BUCKET_NAME,
                             fileUUID: file.uuid,
                             fileName: filename,
-                            accessCredentials:
-                                await this.dataStorage.generateTemporaryCredential(
-                                    file.uuid,
-                                ),
+                            accessCredentials: null,
                         });
                     });
                 } catch (error: unknown) {
@@ -579,15 +581,42 @@ export class FileLifecycleService implements OnModuleInit {
                 });
             }
 
-            return {
-                // TODO: fix typing
-                // @ts-ignore
-                data: credentials,
-                count: credentials.length,
-                skip: 0,
-                take: credentials.length,
-            };
+            return credentials;
         });
+
+        try {
+            for (const entry of entries) {
+                if (entry.fileUUID === null) continue;
+                entry.accessCredentials =
+                    await this.dataStorage.generateTemporaryCredential(
+                        entry.fileUUID,
+                    );
+            }
+        } catch (error: unknown) {
+            // Mark the reserved files as canceled so a retry can reuse them
+            // instead of hitting "File already exists". Only touch rows still
+            // UPLOADING: a reused file may have been confirmed meanwhile by a
+            // previous uploader holding older credentials.
+            const reservedUUIDs = entries
+                .map((entry) => entry.fileUUID)
+                .filter((uuid): uuid is string => uuid !== null);
+            if (reservedUUIDs.length > 0) {
+                await this.fileRepository.update(
+                    { uuid: In(reservedUUIDs), state: FileState.UPLOADING },
+                    { state: FileState.CANCELED },
+                );
+            }
+            throw error;
+        }
+
+        return {
+            // TODO: fix typing
+            // @ts-ignore
+            data: entries,
+            count: entries.length,
+            skip: 0,
+            take: entries.length,
+        };
     }
 
     async cancelUpload(

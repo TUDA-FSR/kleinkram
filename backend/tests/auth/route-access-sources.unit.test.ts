@@ -6,7 +6,7 @@ import {
     fromQuery,
 } from '@/endpoints/auth/access-source';
 import {
-    DeleteTagGuard,
+    DeleteMetadataGuard,
     FileAccessGuard,
     MissionAccessGuard,
     ProjectAccessGuard,
@@ -33,7 +33,7 @@ const SOURCE_AWARE_GUARDS = new Set<unknown>([
     MissionAccessGuard,
     FileAccessGuard,
     ProjectAccessGuard,
-    DeleteTagGuard,
+    DeleteMetadataGuard,
 ]);
 
 /**
@@ -66,16 +66,18 @@ const EXPECTED_ACCESS_SOURCES = new Map<string, AccessSource>([
     ['MissionController.getMissionById', fromParameter('uuid')],
     ['MissionController.downloadWithToken', fromParameter('uuid')],
     ['MissionController.deleteMission', fromParameter('uuid')],
-    ['MissionController.addTags', fromParameter('uuid')],
+    ['MissionController.updateMetadata', fromParameter('uuid')],
 
     // --- projects --------------------------------------------------------
     ['ProjectController.getProjectById', fromParameter('uuid')],
     ['ProjectController.updateProject', fromParameter('uuid')],
     ['ProjectController.deleteProject', fromParameter('uuid')],
     ['ProjectController.addUserToProject', fromParameter('uuid')],
-    ['ProjectController.addTagType', fromParameter('uuid')],
-    ['ProjectController.removeTagType', fromParameter('uuid')],
-    ['ProjectController.updateTagTypes', fromParameter('uuid')],
+    ['ProjectController.addMetadataType', fromParameter('uuid')],
+    ['ProjectController.removeMetadataType', fromParameter('uuid')],
+    ['ProjectController.updateMetadataTypes', fromParameter('uuid')],
+    ['ProjectController.starProject', fromParameter('uuid')],
+    ['ProjectController.unstarProject', fromParameter('uuid')],
     ['ProjectController.getProjectAccess', fromParameter('uuid')],
     ['ProjectController.updateProjectAccess', fromParameter('uuid')],
 
@@ -90,13 +92,14 @@ const EXPECTED_ACCESS_SOURCES = new Map<string, AccessSource>([
     // --- categories ------------------------------------------------------
     ['CategoryController.getAll', fromQuery('projectUuid')],
     ['CategoryController.createCategory', fromBody('projectUUID')],
+    ['CategoryController.updateCategoryDescription', fromBody('projectUUID')],
     ['CategoryController.addManyCategories', fromBody('missionUUID')],
 
     // --- triggers --------------------------------------------------------
     ['TriggerController.create', fromBody('missionUuid')],
 
     // --- metadata --------------------------------------------------------
-    ['MetadataController.deleteTag', fromParameter('uuid')],
+    ['MetadataController.deleteMetadata', fromParameter('uuid')],
 ]);
 
 /**

@@ -38,6 +38,7 @@ Configuration for SeaweedFS (or S3-compatible storage), which is used for object
 | `S3_DATA_BUCKET_NAME`      | The bucket name for main data storage.        | `data`                                     |
 | `S3_DB_BUCKET_NAME`        | The bucket name for database dumps/backups.   | `dbdumps`                                  |
 | `S3_ARTIFACTS_BUCKET_NAME` | The bucket name for build artifacts.          | `artifacts`                                |
+| `S3_SCRIPTS_BUCKET_NAME`   | The bucket name for single-file action scripts. | `action-scripts`                           |
 | `S3_ENDPOINT`              | The S3 endpoint as reachable **by clients** (browser and CLI upload directly). A bare hostname is prefixed with `https://` in production (`http://` when `DEV=true`); a full URL is used as is. | `localhost` |
 | `S3_ENDPOINT_INTERNAL`     | Optional. Endpoint the backend uses for its own S3 traffic, e.g. the compose service name, so server-side requests do not leave the Docker network. | `seaweedfs:9000` |
 
@@ -79,6 +80,13 @@ Configuration for the PostgreSQL database.
 | `GITHUB_CLIENT_SECRET`                | GitHub OAuth Client Secret.                                    | -                             |
 | `JWT_SECRET`                          | Secret key used to sign and verify JWT tokens.                 | `SECRET`                      |
 | `GITHUB_ALLOWED_ORGS`                 | Optional, comma-separated GitHub organisation logins. When set, the GitHub strategy requests the `read:org` scope and rejects users who are not a member of at least one listed organisation, before any user record is created. Empty = anyone with a GitHub account may log in (GitHub itself cannot restrict this). | - |
+
+### Access Config
+
+| Variable             | Description                                                                                                                                                 | Default                               |
+| :------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------ |
+| `ACCESS_CONFIG_PATH` | Path (inside the container) to the `access_config.json` that defines the affiliation groups. Required: the backend refuses to start without a valid config. | `/app/backend/access_config.dev.json` |
+| `ACCESS_CONFIG_FILE` | Host path of the deployment's `access_config.json`, mounted by `docker-compose.dev.yml` and `docker-compose.prod.yml`.                                      | `./access_config.json`                |
 
 ## Docker & Registry Configuration
 

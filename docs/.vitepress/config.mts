@@ -104,6 +104,10 @@ export default withMermaid({
                             link: '/usage/files/files',
                         },
                         {
+                            text: 'Partial Download',
+                            link: '/usage/files/partial-download',
+                        },
+                        {
                             text: 'Access Control',
                             link: '/usage/access-control/base-concepts',
                             items: [
@@ -124,6 +128,10 @@ export default withMermaid({
                         {
                             text: 'Use Actions',
                             link: '/usage/actions/use-actions.md',
+                        },
+                        {
+                            text: 'Run a Python Script',
+                            link: '/usage/actions/run-script.md',
                         },
                         {
                             text: 'Action Triggers',

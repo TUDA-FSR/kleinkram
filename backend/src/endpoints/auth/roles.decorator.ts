@@ -4,6 +4,7 @@ import { AccessGroupRights } from '@kleinkram/shared';
 import {
     applyDecorators,
     ForbiddenException,
+    NotFoundException,
     SetMetadata,
     UseGuards,
 } from '@nestjs/common';
@@ -19,11 +20,13 @@ import {
     CanEditGroupByGroupUuid,
     CanModifyTriggerGuard,
     CanReadManyMissionsGuard,
+    CanReadTriggerGuard,
     CreateActionGuard,
     CreateActionsGuard,
     CreateGuard,
+    CreateScriptActionGuard,
     DeleteActionGuard,
-    DeleteTagGuard,
+    DeleteMetadataGuard,
     FileAccessGuard,
     LoggedInUserGuard,
     MissionAccessGuard,
@@ -32,6 +35,7 @@ import {
     ProjectAccessGuard,
     QueueItemAccessGuard,
     ReadActionGuard,
+    ReportActionDiagnosticGuard,
     UserGuard,
 } from './guards';
 
@@ -369,6 +373,25 @@ export function CanReadAction() {
     );
 }
 
+/**
+ * Restricts a route to the running action container itself.
+ *
+ * Only the disposable action key the runner minted for the action named in the
+ * route parameter is accepted; user sessions and ordinary CLI keys are not.
+ */
+export function IsRunningAction() {
+    return applyDecorators(
+        SetMetadata('IsRunningAction', true),
+        UseGuards(ReportActionDiagnosticGuard),
+        ApiResponse({
+            status: 403,
+            type: ForbiddenException,
+            description:
+                'This endpoint can only be called by the action container itself, using the API key Kleinkram injected into it.',
+        }),
+    );
+}
+
 export function CanCreateAction() {
     return applyDecorators(
         SetMetadata('CanCreateActions', true),
@@ -378,6 +401,19 @@ export function CanCreateAction() {
             type: ForbiddenException,
             description:
                 'User does not have Create permissions on the specified project.',
+        }),
+    );
+}
+
+export function CanCreateScriptAction() {
+    return applyDecorators(
+        SetMetadata('CanCreateActions', true),
+        UseGuards(CreateScriptActionGuard),
+        ApiResponse({
+            status: 403,
+            type: ForbiddenException,
+            description:
+                'User does not have the permissions the script runner template requires on the specified project.',
         }),
     );
 }
@@ -422,11 +458,11 @@ export function CanCancelAction() {
 }
 
 /**
- * Requires WRITE rights on the mission a tag is added to.
+ * Requires WRITE rights on the mission metadata is added to.
  *
  * @param source where the mission uuid lives, defaults to the `uuid` route parameter
  */
-export function CanAddTag(source: AccessSource = fromParameter()) {
+export function CanAddMetadata(source: AccessSource = fromParameter()) {
     return applyDecorators(
         SetMetadata('accessRight', AccessGroupRights.WRITE),
         SetMetadata(ACCESS_SOURCE_METADATA_KEY, source),
@@ -435,26 +471,26 @@ export function CanAddTag(source: AccessSource = fromParameter()) {
             status: 401,
             type: UnauthorizedExceptionDto,
             description:
-                'User does not have AddTag permissions on the specified project.',
+                'User does not have AddMetadata permissions on the specified project.',
         }),
     );
 }
 
 /**
- * Requires DELETE rights on the mission a tag belongs to.
+ * Requires DELETE rights on the mission a metadata value belongs to.
  *
- * @param source where the tag uuid lives, defaults to the `uuid` route parameter
+ * @param source where the metadata uuid lives, defaults to the `uuid` route parameter
  */
-export function CanDeleteTag(source: AccessSource = fromParameter()) {
+export function CanDeleteMetadata(source: AccessSource = fromParameter()) {
     return applyDecorators(
         SetMetadata('accessRight', AccessGroupRights.DELETE),
         SetMetadata(ACCESS_SOURCE_METADATA_KEY, source),
-        UseGuards(DeleteTagGuard),
+        UseGuards(DeleteMetadataGuard),
         ApiResponse({
             status: 401,
             type: UnauthorizedExceptionDto,
             description:
-                'User does not have DeleteTag permissions on the specified project.',
+                'User does not have DeleteMetadata permissions on the specified project.',
         }),
     );
 }
@@ -494,6 +530,31 @@ export function CanModifyTrigger() {
             type: ForbiddenException,
             description:
                 'User does not have permission to modify this trigger.',
+        }),
+    );
+}
+
+/**
+ * Requires READ rights on the trigger's mission, or authorship of the trigger.
+ *
+ * The mission uuid is read off the trigger addressed by the `uuid` route
+ * parameter, so the caller never supplies it. Requests authenticated with an
+ * API key are held to the key's own mission scope and get neither the author
+ * nor the admin shortcut.
+ */
+export function CanReadTrigger() {
+    return applyDecorators(
+        SetMetadata('CanReadTrigger', true),
+        UseGuards(CanReadTriggerGuard),
+        ApiResponse({
+            status: 403,
+            type: ForbiddenException,
+            description: 'User does not have Read permissions on this trigger.',
+        }),
+        ApiResponse({
+            status: 404,
+            type: NotFoundException,
+            description: 'No trigger exists with the given uuid.',
         }),
     );
 }

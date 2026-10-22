@@ -25,3 +25,6 @@ docs/development/application-structure/postgres.md
 .env.prod
 certs/
 housekeeping.log
+
+# deployment specific access config, see docs/development/access-control
+/access_config.json
