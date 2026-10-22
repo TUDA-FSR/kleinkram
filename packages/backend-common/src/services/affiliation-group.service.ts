@@ -63,6 +63,21 @@ export class AffiliationGroupService {
     ): Promise<void> {
         const configUuids = new Set(config.access_groups.map((g) => g.uuid));
 
+        // Groups driven by the `github_orgs` rules are owned by the per-login
+        // sync (`syncGithubOrgGroups`), which needs the user's OAuth token to
+        // read org membership. That token does not exist at boot, so this
+        // reconciliation cannot tell a legitimate member from a stale one and
+        // must not drop their membership -- otherwise every restart strips the
+        // groups until each user happens to log in again, which never happens
+        // for API-key/CLI-only users. Empty without `github_orgs`, so upstream
+        // behaviour is unchanged.
+        const githubManagedUuids = new Set(
+            (config.github_orgs ?? []).flatMap((rule) => [
+                ...rule.member_access_groups,
+                ...rule.non_member_access_groups,
+            ]),
+        );
+
         // 1. Upsert groups from config
         await Promise.all(
             config.access_groups.map(async (group) => {
@@ -162,6 +177,7 @@ export class AffiliationGroupService {
             for (const membership of currentAffiliationMemberships) {
                 if (
                     membership.accessGroup?.uuid &&
+                    !githubManagedUuids.has(membership.accessGroup.uuid) &&
                     !expectedUuids.has(membership.accessGroup.uuid)
                 ) {
                     await this.groupMembershipRepository.remove(membership);
