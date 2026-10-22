@@ -1,7 +1,7 @@
 import { AuthService } from '@/services/auth.service';
 import { AuthFlowException } from '@/types/auth-flow-exception';
 import env from '@kleinkram/backend-common/environment';
-import accessConfig from '@/access_config.json';
+import { loadAccessConfig } from '@kleinkram/backend-common';
 import { Providers } from '@kleinkram/shared';
 import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
@@ -9,6 +9,18 @@ import axios from 'axios';
 import e from 'express';
 import { Strategy } from 'passport-github2';
 import logger from '../../logger';
+
+/**
+ * The deployment's access config, loaded on first use.
+ *
+ * Upstream no longer bundles access_config.json into the image (it is mounted
+ * and located via ACCESS_CONFIG_PATH), so it cannot be a static import. This
+ * is read lazily because `needsOrgScope()` runs inside the constructor's
+ * `super()` call, before DI could hand the config over.
+ */
+let cachedAccessConfig: ReturnType<typeof loadAccessConfig> | undefined;
+const accessConfig = (): ReturnType<typeof loadAccessConfig> =>
+    (cachedAccessConfig ??= loadAccessConfig());
 
 @Injectable()
 export class GitHubStrategy extends PassportStrategy(Strategy, 'github') {
@@ -29,7 +41,7 @@ export class GitHubStrategy extends PassportStrategy(Strategy, 'github') {
     private static needsOrgScope(): boolean {
         return (
             env.GITHUB_ALLOWED_ORGS.length > 0 ||
-            (accessConfig.github_orgs?.length ?? 0) > 0
+            (accessConfig().github_orgs?.length ?? 0) > 0
         );
     }
 
