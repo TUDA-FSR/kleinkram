@@ -9,6 +9,7 @@ services:
     api-server:
         image: rslethz/kleinkram:api-server-latest
         container_name: kleinkram-api-server-prod
+        restart: unless-stopped
 
         build:
             context: .
@@ -43,6 +44,7 @@ services:
     postgres:
         image: postgres:17
         container_name: kleinkram-postgres-prod
+        restart: unless-stopped
 
         # Loopback-only: docker publishes ports via its own iptables chain,
         # which bypasses ufw entirely. The bind address is the real control.
@@ -63,6 +65,7 @@ services:
     seaweedfs:
         image: chrislusf/seaweedfs:4.17
         container_name: kleinkram-seaweedfs-prod
+        restart: unless-stopped
 
         command: server -dir=/data -s3 -s3.port=9000
 
@@ -89,6 +92,7 @@ services:
     frontend:
         image: rslethz/kleinkram:frontend-latest
         container_name: kleinkram-frontend-prod
+        restart: unless-stopped
 
         build:
             context: .
@@ -113,6 +117,7 @@ services:
     redis:
         image: redis:8.10.1
         container_name: kleinkram-redis-prod
+        restart: unless-stopped
         # Redis has no password configured; it must never leave loopback.
         ports:
             - '127.0.0.1:6379:6379'
@@ -122,6 +127,7 @@ services:
     queue-consumer:
         image: rslethz/kleinkram:queue-consumer-latest
         container_name: kleinkram-queue-consumer-prod
+        restart: unless-stopped
         # Workers/runners are keyed by hostname. Without this, a restart with no
         # docker socket registers the random container ID as a brand-new (and
         # then forever-offline) device.
@@ -164,6 +170,7 @@ services:
     prometheus:
         image: prom/prometheus:v3.14.0
         container_name: kleinkram-prometheus-prod
+        restart: unless-stopped
         volumes:
             - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
             - logging-prometheus-storage:/prometheus
@@ -187,6 +194,7 @@ services:
         user: '0:0'
         image: grafana/tempo:3.0.0
         container_name: kleinkram-tempo-prod
+        restart: unless-stopped
         command: ['-config.file=/etc/tempo/tempo.yml']
         volumes:
             - ./observability/tempo/tempo.yml:/etc/tempo/tempo.yml
@@ -204,6 +212,7 @@ services:
     loki:
         image: grafana/loki:3.7.7
         container_name: kleinkram-loki-prod
+        restart: unless-stopped
         # auth_enabled is false in loki-config.yml, i.e. unauthenticated log
         # read AND ingest. Upstream published this on all interfaces.
         ports:
@@ -223,6 +232,7 @@ services:
     grafana:
         image: grafana/grafana:13.2.1
         container_name: kleinkram-grafana-prod
+        restart: unless-stopped
         volumes:
             - logging-grafana-storage:/var/lib/grafana
             - ./observability/grafana/provisioning:/etc/grafana/provisioning
@@ -237,6 +247,7 @@ services:
     documentation:
         image: rslethz/kleinkram:docs-latest
         container_name: kleinkram-documentation-prod
+        restart: unless-stopped
         build:
             context: .
             dockerfile: docker/docs.Dockerfile
@@ -254,6 +265,7 @@ services:
     caddy:
         image: caddy:2-alpine
         container_name: kleinkram-caddy-prod
+        restart: unless-stopped
         # The ONLY service published beyond loopback. 443 for the three
         # hostnames, 80 solely for the automatic HTTPS redirect.
         ports:
