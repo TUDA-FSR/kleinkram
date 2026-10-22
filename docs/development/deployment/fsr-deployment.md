@@ -94,6 +94,20 @@ wrong:
   the running container keeps the old one. Restart the container after editing `proxy/Caddyfile`
   or the observability configs.
 
+Since 0.63.0 the access config is **no longer baked into the api-server image**. It is
+bind-mounted into the container, so editing it needs only a container restart, not a rebuild:
+
+| | |
+| :--- | :--- |
+| Host file | `./access_config.json` (repo root, gitignored — it never reaches the public fork) |
+| Mounted at | `/app/config/access_config.json`, read-only |
+| Located by | `ACCESS_CONFIG_PATH` (set in the compose `environment:` block) |
+| Host path override | `ACCESS_CONFIG_FILE` (defaults to `./access_config.json`) |
+
+The api-server refuses to start if the file is missing or invalid, so keep a copy: it is the only
+untracked part of the access model. Only the api-server mounts it — the queue-consumer never
+loads it.
+
 Variables specific to this deployment (all optional upstream, see
 [Environment Variables](../environment-variables.md)):
 
@@ -107,13 +121,23 @@ Variables specific to this deployment (all optional upstream, see
 
 ## Access model
 
-Users are placed into affiliation groups at every login according to
-`backend/src/access_config.json`, using the `github_orgs` rule added for this deployment:
+Users are placed into affiliation groups at every login according to the deployment's
+`access_config.json`, using the `github_orgs` rule added for this deployment:
 
 | Group          | Who                                     | Create projects | Default rights on every new project |
 | :------------- | :-------------------------------------- | :-------------- | :---------------------------------- |
 | **FSR Member** | Members of the `TUDA-FSR` GitHub org    | yes             | Create (10)                         |
 | **FSR Guest**  | Every other authenticated GitHub user   | no              | Read (0)                            |
+
+0.63.0 adds an upstream **public access group** (`AccessGroupType.PUBLIC`). What it does and does
+not mean here:
+
+- It grants READ to every **registered** user, not to anonymous visitors: the access view
+  cross-joins the `user` table. Login on this instance is GitHub-only, so "public" still means
+  "any logged-in GitHub user", which is the same audience FSR Guest already covers.
+- It is capped at READ server-side, and its membership cannot be edited (`public-access.ts`).
+- The migration grants nothing retroactively. A project becomes public only if someone adds the
+  group to it, and no existing project has that row.
 
 Membership is re-evaluated on each login (the strategy requests the `read:org` scope and lists the
 user's organisations), so leaving the org demotes the user to Guest next time they sign in.
@@ -171,18 +195,20 @@ Rebuild leftovers (dangling images and build cache) are the one thing that grows
 
 ### Local source patches
 
-These are behaviour changes to upstream code. The first four fix bugs and are candidates for
-upstream pull requests; the rest add configuration knobs that default to upstream behaviour.
+These are behaviour changes to upstream code. The bug fixes are candidates for upstream pull
+requests; the rest add configuration knobs that default to upstream behaviour.
+
+As of the v0.63.3 merge, upstream fixed the soft-deleted-project access-group 500 itself, with
+logic identical to ours, so that patch is gone — three bug-fix candidates remain.
 
 | File                                                                  | Change                                                                                               |
 | :-------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------- |
 | `backend/src/services/auth.service.ts`                                | Login no longer fails with 500 when the GitHub/Google profile has no display name (falls back to username, then email local-part) |
-| `backend/src/serialization/index.ts`                                  | Access-group listing no longer 500s once any project the group had access to is soft-deleted (`null` relation was not guarded)     |
 | `frontend/src/pages/access-groups-page.vue`                           | "Creation Date" column showed `NaN` in non-US locales (date was formatted to a locale string and re-parsed)                       |
 | `queueConsumer/src/actions/services/container-lifecycle.service.ts`   | Reconciliation loop logs one warning instead of an ERROR stack trace every 30 s when no docker socket is mounted                  |
 | `packages/backend-common/src/environment.ts`                          | New `ACTIONS_ADMIN_ONLY`, `GITHUB_ALLOWED_ORGS` getters                                              |
 | `packages/backend-common/.../action-dispatcher.service.ts`            | Enforces `ACTIONS_ADMIN_ONLY` at the single chokepoint for UI, CLI, API-key and trigger submissions   |
-| `backend/src/endpoints/auth/github.strategy.ts`                       | Fetches the user's organisations (`read:org`) for the allowlist and for `github_orgs` group rules     |
+| `backend/src/endpoints/auth/github.strategy.ts`                       | Fetches the user's organisations (`read:org`) for the allowlist and for `github_orgs` group rules; loads the access config lazily via `loadAccessConfig()` (it is no longer a static import) |
 | `packages/shared/src/types/access-group-config.ts` + affiliation service + project guard/service | `github_orgs`, `can_create_projects`, `default_for_all_projects` in `access_config.json` |
 
 ## Operations
